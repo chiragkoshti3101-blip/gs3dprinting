@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>GS3D Enquiry Inbox</title>
+<style>
+  :root { color-scheme: light; --ink:#14161a; --muted:#5f6a76; --paper:#f7f7f4; --line:#e3e3dd; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif; background:var(--paper); color:var(--ink); }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+  h1 { font-size: 1.4rem; margin: 0 0 0.25rem; }
+  .sub { color: var(--muted); margin: 0 0 1.5rem; font-size: 0.9rem; }
+  .gate { background:#fff; border:1px solid var(--line); border-radius:14px; padding:2rem; max-width:420px; margin:3rem auto; text-align:center; }
+  .gate input { width:100%; padding:0.7rem 0.9rem; font:inherit; border:1px solid var(--line); border-radius:9px; margin-top:1rem; }
+  .gate button { margin-top:0.75rem; width:100%; padding:0.7rem; font:inherit; font-weight:600; border:0; border-radius:9px; background:var(--ink); color:#fff; cursor:pointer; }
+  .gate .err { color:#8b0000; font-size:0.85rem; margin-top:0.5rem; min-height:1.2em; }
+  .bar { display:flex; gap:0.6rem; margin-bottom:1rem; flex-wrap:wrap; }
+  .bar button { font:inherit; padding:0.5rem 0.9rem; border:1px solid var(--line); background:#fff; border-radius:8px; cursor:pointer; }
+  .bar button.primary { background:var(--ink); color:#fff; border-color:var(--ink); }
+  .card { background:#fff; border:1px solid var(--line); border-radius:14px; padding:1.1rem 1.2rem; margin-bottom:1rem; }
+  .card h2 { font-size:1.05rem; margin:0; }
+  .meta { color:var(--muted); font-size:0.82rem; margin:0.15rem 0 0.6rem; }
+  .kv { display:grid; grid-template-columns: max-content 1fr; gap:0.15rem 0.8rem; font-size:0.9rem; margin-bottom:0.5rem; }
+  .kv .k { color:var(--muted); }
+  .files { display:grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap:0.75rem; margin-top:0.6rem; }
+  .file { border:1px solid var(--line); border-radius:10px; overflow:hidden; background:#fafafa; }
+  .file img { width:100%; height:120px; object-fit:cover; display:block; background:#fff; }
+  .file .cap { font-size:0.75rem; padding:0.4rem 0.55rem; color:var(--muted); word-break:break-all; }
+  .file a.dl { display:inline-block; margin:0.4rem 0.55rem 0.55rem; font-size:0.78rem; color:#0b6e84; text-decoration:none; font-weight:600; }
+  .empty { text-align:center; color:var(--muted); padding:3rem 0; }
+  .err2 { background:#fdecec; border:1px solid #f3c4c0; color:#8b0000; border-radius:10px; padding:0.7rem 0.9rem; margin-bottom:1rem; font-size:0.9rem; }
+  @media (max-width:600px){ .kv{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>GS3D — Enquiry inbox</h1>
+  <p class="sub">Website quote requests, stored on your Vercel. Every record shows the customer's image(s) inline.</p>
+  <div id="gate" class="gate" hidden>
+    <strong>Private</strong>
+    <p class="sub" style="margin:0.4rem 0 0">Enter the admin password to view enquiries.</p>
+    <input id="pw" type="password" placeholder="Admin password" autocomplete="current-password" />
+    <button id="pwGo">Open inbox</button>
+    <div class="err" id="pwErr"></div>
+  </div>
+  <div id="main" hidden>
+    <div class="bar">
+      <button class="primary" id="refresh">↻ Refresh</button>
+      <button id="autorefresh">Auto-refresh: off</button>
+      <button id="lockout">Lock</button>
+    </div>
+    <div id="err"></div>
+    <div id="list"></div>
+  </div>
+</div>
+<script>
+(function(){
+  "use strict";
+  var api = "api/inbox.js";
+  var pw = sessionStorage.getItem("gs3dAdminPw") || "";
+  var el = function(id){ return document.getElementById(id); };
+
+  function showGate(){ el("gate").hidden = false; el("main").hidden = true; el("pw").value=""; }
+  function showMain(){ el("gate").hidden = true; el("main").hidden = false; load(); }
+
+  el("pwGo").addEventListener("click", tryAuth);
+  el("pw").addEventListener("keydown", function(e){ if(e.key==="Enter") tryAuth(); });
+
+  function tryAuth(){
+    pw = el("pw").value;
+    load(function(){ sessionStorage.setItem("gs3dAdminPw", pw); el("pwErr").textContent=""; showMain(); },
+         function(){ el("pwErr").textContent = "Wrong password or service error. Try again."; });
+  }
+
+  function apiCall(onOk, onErr){
+    fetch(api, { method:"GET", headers:{ "X-Admin-Pass": pw } })
+      .then(function(r){ if(r.status===403) throw new Error("403"); return r.json(); })
+      .then(function(d){ if(!d.ok) throw new Error(d.error||"error"); onOk(d.records||[]); })
+      .catch(function(e){ onErr && onErr(e); });
+  }
+
+  function load(onAuthOk, onAuthErr){
+    apiCall(function(records){
+      if (onAuthOk){ onAuthOk(); return; }
+      render(records);
+    }, function(e){
+      if (onAuthErr){ onAuthErr(e); return; }
+      el("err").innerHTML = '<div class="err2">Could not load inbox: '+esc(e.message)+'</div>';
+    });
+  }
+
+  function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
+
+  function render(records){
+    var list = el("list");
+    el("err").innerHTML = "";
+    if (!records.length){
+      list.innerHTML = '<div class="empty">No enquiries yet. Submit a test form on the homepage and refresh — it will appear here.</div>';
+      return;
+    }
+    var html = "";
+    records.forEach(function(r){
+      var f = r.form || {};
+      var d = new Date(r.ts || Date.now());
+      var kv = [
+        ["Name", f.name], ["Phone", f.phone], ["Company", f.company],
+        ["Email", f.email], ["Service", f.service],
+        ["Needed by", f.deadline], ["Details", f.message]
+      ].filter(function(x){ return x[1]; }).map(function(x){
+        return '<div class="k">'+esc(x[0])+'</div><div>'+esc(x[1])+'</div>';
+      }).join("");
+      var files = (r.files||[]).map(function(fl){
+        if (!fl.url) return "";
+        var isImg = /\.(jpe?g|png|webp|gif|avif|bmp|svg)(\?|$)/i.test(fl.name) || /\.jpg$/i.test(fl.url) || /\.jpeg$/i.test(fl.url);
+        var media = isImg
+          ? '<img loading="lazy" src="'+esc(fl.url)+'" alt="'+esc(fl.name)+'" onerror="this.style.display=\'none\'" />'
+          : "";
+        return '<div class="file">'+media+'<div class="cap">'+esc(fl.name)+'</div>'+
+               '<a class="dl" href="'+esc(fl.url)+'" target="_blank" rel="noopener">Open / download</a></div>';
+      }).join("");
+      html += '<div class="card">'+
+        '<h2>'+(esc(f.name||"—") + (f.service ? " · "+esc(f.service):""))+'</h2>'+
+        '<p class="meta">'+d.toLocaleString()+' · '+ (r.files||[]).length +' file(s) · #'+esc(r.id)+'</p>'+
+        (kv ? '<div class="kv">'+kv+'</div>' : "")+
+        (files ? '<div class="files">'+files+'</div>' : "")+
+        '</div>';
+    });
+    list.innerHTML = html;
+  }
+
+  el("refresh").addEventListener("click", function(){ load(); });
+  var auto = false, timer = null;
+  el("autorefresh").addEventListener("click", function(){
+    auto = !auto;
+    this.textContent = "Auto-refresh: " + (auto ? "on" : "off");
+    if (auto) timer = setInterval(load, 30000); else { clearInterval(timer); timer=null; }
+  });
+  el("lockout").addEventListener("click", function(){
+    sessionStorage.removeItem("gs3dAdminPw"); pw = ""; showGate();
+  });
+
+  // Auto-enter only when session password exists AND still valid.
+  if (pw){ load(function(){ showMain(); }, showGate); } else { showGate(); }
+})();
+</script>
+</body>
+</html>
