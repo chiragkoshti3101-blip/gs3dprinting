@@ -680,7 +680,7 @@
         var hasFiles = (data.fileObjects || []).length > 0;
         if (!hasFiles) {
           try {
-            fetch("api/inbox.js", {
+            fetch("/api/inbox", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -733,7 +733,7 @@
                 },
                 files: fileLinks.map(function (l) { return { name: l.name, url: l.url }; })
               };
-              fetch("api/inbox.js", {
+              fetch("/api/inbox", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(rec)

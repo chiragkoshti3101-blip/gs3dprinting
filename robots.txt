@@ -5,4 +5,4 @@ Allow: /
 # Keep crawlers out of any future serverless endpoints.
 Disallow: /api/
 
-Sitemap: https://gs3d-rebuild.vercel.app/sitemap.xml
+Sitemap: https://gs3dprinting.com/sitemap.xml

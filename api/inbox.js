@@ -30,6 +30,55 @@ function sign(store, operations) {
   return issueSignedToken({ token: rw, store, operations, validFor: 3600 });
 }
 
+/**
+ * Email the owner about a stored enquiry. Optional: with no RESEND_API_KEY the
+ * site behaves exactly as before (record in blob, nothing else). Never throws —
+ * a failed notification must not fail the enquiry itself.
+ */
+async function notifyOwner(record) {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return;
+  const to = process.env.ENQUIRY_NOTIFY_TO || "gs3dprinting@gmail.com";
+  const from = process.env.ENQUIRY_NOTIFY_FROM || "GS3D Website <onboarding@resend.dev>";
+  const form = record.form || {};
+  const from_files = (record.files || []).map((f) => `${f.name}: ${f.url}`).join("\n") || "none";
+  const text = [
+    "New enquiry from the website",
+    "",
+    `Name: ${form.name || "-"}`,
+    `Phone: ${form.phone || "-"}`,
+    `Email: ${form.email || "-"}`,
+    `Company: ${form.company || "-"}`,
+    `Service: ${form.service || "-"}`,
+    `Needed by: ${form.deadline || "-"}`,
+    "",
+    "Message:",
+    form.message || "-",
+    "",
+    "Files:",
+    from_files,
+    "",
+    `Record: ${record.id}`,
+  ].join("\n");
+  try {
+    const resp = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+      body: JSON.stringify({
+        from,
+        to: [to],
+        subject: `New enquiry — ${form.name || "website"}`,
+        text,
+      }),
+    });
+    if (!resp.ok) {
+      console.error("notify failed", resp.status, (await resp.text()).slice(0, 200));
+    }
+  } catch (err) {
+    console.error("notify error", String(err?.message || err));
+  }
+}
+
 export default async function handler(req, res) {
   const store = process.env.BLOB_STORE_ID || "store_QqMBiCBONsvyjsy0";
 
@@ -58,7 +107,7 @@ export default async function handler(req, res) {
             putUrl: presigned.presignedUrl,
             // Keep "/" literal (the /files/:path* rewrite depends on it);
             // names are already sanitized to [A-Za-z0-9._-].
-            publicUrl: `https://gs3d-rebuild.vercel.app/files/${key}`,
+            publicUrl: `${process.env.PUBLIC_BASE_URL || "https://gs3dprinting.com"}/files/${key}`,
           });
         }
         res.status(200).json({ ok: true, items });
@@ -96,6 +145,7 @@ export default async function handler(req, res) {
         if (resp.status !== 200 && resp.status !== 201) {
           return res.status(500).json({ ok: false, error: "record_write_failed" });
         }
+        await notifyOwner(record);
         res.status(200).json({ ok: true, id });
       } catch (err) {
         res.status(500).json({ ok: false, error: String(err?.message || err).slice(0, 160) });

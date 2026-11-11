@@ -1,37 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://gs3d-rebuild.vercel.app/</loc>
+    <loc>https://gs3dprinting.com/</loc>
     <lastmod>2026-11-04</lastmod>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://gs3d-rebuild.vercel.app/services/scale-models.html</loc>
+    <loc>https://gs3dprinting.com/services/scale-models.html</loc>
     <lastmod>2026-11-04</lastmod>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://gs3d-rebuild.vercel.app/services/3d-printing.html</loc>
+    <loc>https://gs3dprinting.com/services/3d-printing.html</loc>
     <lastmod>2026-11-04</lastmod>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://gs3d-rebuild.vercel.app/services/prototyping.html</loc>
+    <loc>https://gs3dprinting.com/services/prototyping.html</loc>
     <lastmod>2026-11-04</lastmod>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://gs3d-rebuild.vercel.app/services/3d-scanning.html</loc>
+    <loc>https://gs3dprinting.com/services/3d-scanning.html</loc>
     <lastmod>2026-11-04</lastmod>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://gs3d-rebuild.vercel.app/terms.html</loc>
+    <loc>https://gs3dprinting.com/terms.html</loc>
     <lastmod>2026-11-04</lastmod>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://gs3d-rebuild.vercel.app/privacy.html</loc>
+    <loc>https://gs3dprinting.com/privacy.html</loc>
     <lastmod>2026-11-04</lastmod>
     <priority>0.3</priority>
   </url>

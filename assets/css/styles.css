@@ -974,35 +974,9 @@ p {
 
 /* Industries */
 
-.industry-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: 0.7rem;
-}
 
-.industry {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.6rem;
-  padding: 0.85rem 1rem;
-  background: var(--white);
-  border-radius: 9px;
-  font-size: 1rem;
-  font-weight: 500;
-  transition: background 0.2s ease;
-}
 
-.industry:hover {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-}
 
-.industry .i-num {
-  font-family: var(--body);
-  font-size: 0.8125rem;
-  color: var(--muted);
-}
 
 /* Technologies */
 
