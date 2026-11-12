@@ -91,7 +91,10 @@ export default async function handler(req, res) {
       const putUrl = presigned.presignedUrl;
       // Serve through our own /files/ proxy so browsers render images
       // inline (the blob store defaults to attachment / download).
-      const publicUrl = `https://gs3d-rebuild.vercel.app/files/${key
+      // Relative on purpose: the file must be fetched from whichever host is
+      // serving the page (www.gs3dprinting.com, gs3d-rebuild.vercel.app, …).
+      // An absolute URL to another host is blocked by our img-src 'self' CSP.
+      const publicUrl = `/files/${key
         .replace(/#/g, "%23")
         .replace(/\?/g, "%3F")}`;
       results.push({ name, ok: true, putUrl, putHeaders: presigned.headers || {}, publicUrl });

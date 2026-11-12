@@ -219,6 +219,8 @@
   .thumb { position: relative; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #f4f4f2; aspect-ratio: 4/3; padding: 0; text-align: left; }
   .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .45s var(--ease); }
   .thumb:hover img { transform: scale(1.05); }
+  .thumb.broken img { display: none; }
+  .thumb.broken::after { content: "Preview unavailable"; position: absolute; inset: 0; display: grid; place-items: center; font-size: .72rem; color: var(--muted); background: #f7f7f4; }
   .thumb .name { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,.62)); color: #fff; font-size: .68rem; padding: 1rem .5rem .32rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .detail-empty { display: grid; place-items: center; min-height: 420px; padding: 2rem; text-align: center; color: var(--muted); }
   .detail-empty .mark { width: 56px; height: 56px; border-radius: 16px; display: grid; place-items: center; background: var(--paper); border: 1px solid var(--line); margin: 0 auto .8rem; }
@@ -470,6 +472,18 @@
     return d;
   }
   function isImage(f) { return /\.(jpe?g|png|webp|gif|avif|bmp|svg)(\?|$)/i.test(((f.name || "") + " " + (f.url || "")).trim()); }
+  /* Records written before the URL fix store absolute hosts (gs3dprinting.com,
+     gs3d-rebuild.vercel.app, the blob store…). Rewrite any /files/ URL to the
+     current origin so it is same-origin and passes img-src 'self'. */
+  function fileUrl(raw) {
+    if (!raw) return "";
+    try {
+      var u = new URL(raw, location.href);
+      if (u.pathname.indexOf("/files/") === 0) return u.pathname + u.search;
+      if (/\.blob\.vercel-storage\.com$/i.test(u.hostname)) return "/files" + u.pathname + u.search;
+    } catch (e) {}
+    return raw;
+  }
   function prefersReduced() { return window.matchMedia("(prefers-reduced-motion: reduce)").matches; }
 
   function loadRead() {
@@ -659,11 +673,12 @@
     var thumbs = files.map(function (fl, i) {
       if (!fl.url) return "";
       if (isImage(fl)) {
-        return '<button class="thumb" type="button" data-img="' + esc(fl.url) + '" data-name="' + esc(fl.name || ("file " + (i + 1))) + '" aria-label="Open ' + esc(fl.name || "image") + '">' +
-          '<img loading="lazy" src="' + esc(fl.url) + '" alt="' + esc(fl.name || "") + '" onerror="this.style.display=\'none\'" />' +
+        var src = fileUrl(fl.url);
+        return '<button class="thumb" type="button" data-img="' + esc(src) + '" data-name="' + esc(fl.name || ("file " + (i + 1))) + '" aria-label="Open ' + esc(fl.name || "image") + '">' +
+          '<img loading="lazy" src="' + esc(src) + '" alt="' + esc(fl.name || "") + '" onerror="this.closest(\'.thumb\').classList.add(\'broken\')" />' +
           '<span class="name">' + esc(fl.name || ("file " + (i + 1))) + "</span></button>";
       }
-      return '<a class="thumb" href="' + esc(fl.url) + '" target="_blank" rel="noopener" style="display:grid;place-items:center;text-decoration:none">' +
+      return '<a class="thumb" href="' + esc(fileUrl(fl.url)) + '" target="_blank" rel="noopener" style="display:grid;place-items:center;text-decoration:none">' +
         '<span style="padding:.6rem;text-align:center"><span style="display:block;font-size:1.5rem;line-height:1">📄</span>' +
         '<span style="display:block;font-size:.7rem;color:#54585c;margin-top:.3rem;word-break:break-all">' + esc(fl.name || "file") + "</span></span></a>";
     }).join("");

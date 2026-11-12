@@ -41,7 +41,9 @@ async function notifyOwner(record) {
   const to = process.env.ENQUIRY_NOTIFY_TO || "gs3dprinting@gmail.com";
   const from = process.env.ENQUIRY_NOTIFY_FROM || "GS3D Website <onboarding@resend.dev>";
   const form = record.form || {};
-  const from_files = (record.files || []).map((f) => `${f.name}: ${f.url}`).join("\n") || "none";
+  const base = (process.env.PUBLIC_BASE_URL || "https://www.gs3dprinting.com").replace(/\/$/, "");
+  const abs = (url) => (/^https?:\/\//i.test(url || "") ? url : base + (url || ""));
+  const from_files = (record.files || []).map((f) => `${f.name}: ${abs(f.url)}`).join("\n") || "none";
   const text = [
     "New enquiry from the website",
     "",
@@ -107,7 +109,9 @@ export default async function handler(req, res) {
             putUrl: presigned.presignedUrl,
             // Keep "/" literal (the /files/:path* rewrite depends on it);
             // names are already sanitized to [A-Za-z0-9._-].
-            publicUrl: `${process.env.PUBLIC_BASE_URL || "https://gs3dprinting.com"}/files/${key}`,
+            // Relative so it resolves on whatever host serves the page
+            // (absolute cross-origin URLs are blocked by our img-src CSP).
+            publicUrl: `/files/${key}`,
           });
         }
         res.status(200).json({ ok: true, items });
