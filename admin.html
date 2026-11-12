@@ -318,7 +318,9 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
         Refresh
       </button>
-      <button class="btn btn-sm" id="alertsBtn" aria-pressed="false" title="Sound + desktop alerts for new enquiries">Alerts: off</button>
+      <button class="btn btn-sm" id="phoneBtn" title="Subscribe on your phone to push alerts">Phone alerts</button>
+      <button class="btn btn-sm btn-ghost" id="testBtn" title="Send a test alert to the configured channels">Test</button>
+      <button class="btn btn-sm" id="alertsBtn" aria-pressed="false" title="Sound + desktop alerts while this tab is open">Alerts: off</button>
       <button class="btn btn-sm btn-ghost" id="lockBtn">Lock</button>
     </div>
   </header>
@@ -419,6 +421,7 @@
     selected: null,
     read: {},
     seen: {},
+    topic: null,
     demo: false,
     alerts: false,
     timer: null,
@@ -538,6 +541,7 @@
       })
       .then(function (d) {
         if (!d || !d.ok) throw new Error((d && d.error) || "bad response");
+        if (d.alertTopic) state.topic = d.alertTopic;
         return (d.records || []).map(function (r) {
           return { id: r.id, ts: Number(r.ts) || Date.now(), form: r.form || {}, files: Array.isArray(r.files) ? r.files : [] };
         });
@@ -866,6 +870,34 @@
   $("exitDemo").addEventListener("click", function () { state.demo = false; showGate(""); });
 
   $("refreshBtn").addEventListener("click", function () { load(); });
+  $("phoneBtn").addEventListener("click", function () {
+    if (!state.topic) { toast("Sign in again to load your alert topic"); return; }
+    window.open("https://ntfy.sh/" + encodeURIComponent(state.topic), "_blank", "noopener");
+    toast("Subscribe to this topic in the ntfy app for phone push");
+  });
+
+  $("testBtn").addEventListener("click", function () {
+    var btn = this;
+    btn.disabled = true;
+    fetch(API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Admin-Pass": password() },
+      body: JSON.stringify({ op: "test-notify" })
+    })
+      .then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || "HTTP " + r.status); return d; }); })
+      .then(function (d) {
+        if (d.alertTopic) state.topic = d.alertTopic;
+        var list = d.channels || [];
+        var good = list.filter(function (c) { return c.ok; });
+        var bad = list.filter(function (c) { return !c.ok; });
+        if (good.length) toast("Test sent via " + good.map(function (c) { return c.channel; }).join(", "));
+        else if (bad.length) toast("Failed: " + bad.map(function (c) { return c.channel + " (" + (c.error || "error") + ")"; }).join(", "));
+        else toast("No alert channel available");
+      })
+      .catch(function (e) { toast("Test failed: " + e.message); })
+      .finally(function () { btn.disabled = false; });
+  });
+
   $("alertsBtn").addEventListener("click", function () {
     state.alerts = !state.alerts;
     this.textContent = "Alerts: " + (state.alerts ? "on" : "off");
