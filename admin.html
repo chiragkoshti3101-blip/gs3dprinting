@@ -318,7 +318,7 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
         Refresh
       </button>
-      <button class="btn btn-sm" id="autoBtn" aria-pressed="false">Auto: off</button>
+      <button class="btn btn-sm" id="alertsBtn" aria-pressed="false" title="Sound + desktop alerts for new enquiries">Alerts: off</button>
       <button class="btn btn-sm btn-ghost" id="lockBtn">Lock</button>
     </div>
   </header>
@@ -418,8 +418,9 @@
     sort: "new",
     selected: null,
     read: {},
+    seen: {},
     demo: false,
-    auto: false,
+    alerts: false,
     timer: null,
     loading: false
   };
@@ -500,7 +501,9 @@
   function countUp(el, to) {
     var from = Number(el.getAttribute("data-v") || 0);
     el.setAttribute("data-v", to);
-    if (prefersReduced() || from === to) { el.textContent = to; return; }
+    // rAF is paused in background tabs, which would leave the number at 0.
+    if (prefersReduced() || from === to || document.visibilityState !== "visible") { el.textContent = to; return; }
+    setTimeout(function () { el.textContent = to; }, 700);
     var start = performance.now(), dur = 500;
     function step(t) {
       var p = Math.min(1, (t - start) / dur);
@@ -552,6 +555,8 @@
   function enterApp(records, demo) {
     state.records = records;
     state.demo = !!demo;
+    state.seen = {};
+    records.forEach(function (r) { state.seen[r.id] = 1; });
     state.selected = records.length ? records[0].id : null;
     $("gateView").hidden = true; $("appView").hidden = false;
     $("demoBanner").hidden = !demo;
@@ -559,6 +564,64 @@
     $("liveDot").className = "dot" + (demo ? " off" : " pulse");
     buildServiceOptions();
     render();
+    startPolling();
+  }
+
+  /* Merge a polled result without resetting the pane or re-announcing old items. */
+  function applyRecords(records) {
+    var fresh = records.filter(function (r) { return !state.seen[r.id]; });
+    state.seen = {};
+    records.forEach(function (r) { state.seen[r.id] = 1; });
+    state.records = records;
+    if (!records.some(function (r) { return r.id === state.selected; })) {
+      state.selected = records.length ? records[0].id : null;
+    }
+    buildServiceOptions();
+    render();
+    if (fresh.length) announce(fresh);
+  }
+
+  function announce(fresh) {
+    var first = fresh[0].form || {};
+    var label = fresh.length === 1
+      ? "New enquiry from " + (first.name || "the website")
+      : fresh.length + " new enquiries";
+    toast(label);
+    if (!state.alerts) return;
+    chime();
+    if ("Notification" in window && Notification.permission === "granted") {
+      try {
+        new Notification("GS3D \u00b7 " + label, {
+          body: String(first.message || first.phone || "").slice(0, 120),
+          icon: "/assets/img/icon-192.png",
+          tag: "gs3d-enquiry"
+        });
+      } catch (e) {}
+    }
+  }
+
+  function chime() {
+    try {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      var ctx = new Ctx();
+      [880, 1174].forEach(function (freq, i) {
+        var o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = "sine"; o.frequency.value = freq;
+        o.connect(g); g.connect(ctx.destination);
+        var t0 = ctx.currentTime + i * 0.16;
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.exponentialRampToValueAtTime(0.14, t0 + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.35);
+        o.start(t0); o.stop(t0 + 0.4);
+      });
+      setTimeout(function () { try { ctx.close(); } catch (e) {} }, 1200);
+    } catch (e) {}
+  }
+
+  function startPolling() {
+    if (state.timer) clearInterval(state.timer);
+    state.timer = setInterval(function () { if (!state.demo) load(true); }, 20000);
   }
 
   function load(silent) {
@@ -567,7 +630,10 @@
     state.loading = true;
     if (!silent) skeleton();
     fetchRecords(password())
-      .then(function (records) { enterApp(records, false); })
+      .then(function (records) {
+        if ($("appView").hidden) enterApp(records, false);
+        else applyRecords(records);
+      })
       .catch(function (e) {
         if (e.code === 403) { sessionStorage.removeItem(PW_KEY); showGate("Session expired. Enter the password again."); }
         else { $("banner").innerHTML = '<div class="banner err">Could not load enquiries: ' + esc(e.message) + '</div>'; }
@@ -618,6 +684,8 @@
     $("kWeekHint").textContent = week ? Math.round((week / Math.max(total, 1)) * 100) + "% of all" : "—";
     $("kTodayHint").textContent = today ? "keep it up" : "quiet so far";
     $("kFilesHint").textContent = files ? "across all enquiries" : "none yet";
+    var unreadNow = unreadCount();
+    document.title = (unreadNow ? "(" + unreadNow + ") " : "") + "GS3D \u00b7 Enquiry Inbox";
   }
 
   function rowHtml(r, i) {
@@ -798,18 +866,27 @@
   $("exitDemo").addEventListener("click", function () { state.demo = false; showGate(""); });
 
   $("refreshBtn").addEventListener("click", function () { load(); });
-  $("autoBtn").addEventListener("click", function () {
-    state.auto = !state.auto;
-    this.textContent = "Auto: " + (state.auto ? "30s" : "off");
-    this.setAttribute("aria-pressed", String(state.auto));
-    if (state.timer) { clearInterval(state.timer); state.timer = null; }
-    if (state.auto) state.timer = setInterval(function () { load(true); }, 30000);
+  $("alertsBtn").addEventListener("click", function () {
+    state.alerts = !state.alerts;
+    this.textContent = "Alerts: " + (state.alerts ? "on" : "off");
+    this.setAttribute("aria-pressed", String(state.alerts));
+    try { localStorage.setItem("gs3dAdminAlerts", state.alerts ? "1" : "0"); } catch (e) {}
+    if (state.alerts) {
+      if ("Notification" in window && Notification.permission === "default") {
+        Notification.requestPermission();
+      }
+      chime();
+      toast("Alerts on \u2014 sound + desktop");
+    } else {
+      toast("Alerts off");
+    }
   });
   $("lockBtn").addEventListener("click", function () {
     sessionStorage.removeItem(PW_KEY);
     if (state.timer) { clearInterval(state.timer); state.timer = null; }
-    state.auto = false; $("autoBtn").textContent = "Auto: off";
     state.records = []; state.demo = false; state.selected = null;
+    state.seen = {};
+    document.title = "GS3D \u00b7 Enquiry Inbox";
     showGate("");
   });
 
@@ -851,6 +928,13 @@
 
   /* ---------- boot ---------- */
   loadRead();
+  try {
+    if (localStorage.getItem("gs3dAdminAlerts") === "1") {
+      state.alerts = true;
+      $("alertsBtn").textContent = "Alerts: on";
+      $("alertsBtn").setAttribute("aria-pressed", "true");
+    }
+  } catch (e) {}
   var saved = password();
   if (saved) {
     $("liveText").textContent = "Connecting…";
