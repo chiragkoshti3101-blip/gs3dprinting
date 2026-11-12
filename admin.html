@@ -6,8 +6,8 @@
 <meta name="robots" content="noindex, nofollow" />
 <meta name="theme-color" content="#f0f0ee" />
 <title>GS3D · Enquiry Inbox</title>
-<link rel="icon" href="assets/img/favicon.png" />
-<link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png" />
+<link rel="icon" href="/assets/img/favicon.png" />
+<link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -289,7 +289,7 @@
 <!-- ============ GATE ============ -->
 <div class="gate-shell" id="gateView">
   <div class="gate">
-    <img class="logo" src="assets/img/head_logo.png" alt="GS3D Printing" width="150" height="38" />
+    <img class="logo" src="/assets/img/head_logo.png" alt="GS3D Printing" width="150" height="38" />
     <h1>Welcome back</h1>
     <p>Enter the admin password to open the enquiry inbox.</p>
     <form id="gateForm" autocomplete="off">
@@ -308,7 +308,7 @@
 <div class="shell" id="appView" hidden>
   <header class="topbar">
     <div class="brand-row">
-      <img class="logo" src="assets/img/head_logo.png" alt="GS3D Printing" width="150" height="38" />
+      <img class="logo" src="/assets/img/head_logo.png" alt="GS3D Printing" width="150" height="38" />
       <span class="brand-divider" aria-hidden="true"></span>
       <span class="brand-label">Enquiry inbox</span>
     </div>
@@ -406,7 +406,7 @@
 (function () {
   "use strict";
 
-  var API = "api/inbox.js";
+  var API = "/api/inbox.js";
   var PW_KEY = "gs3dAdminPw";
   var READ_KEY = "gs3dAdminRead";
   var $ = function (id) { return document.getElementById(id); };
