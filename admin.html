@@ -488,12 +488,16 @@
     if (!raw) return "";
     try {
       var u = new URL(raw, location.href);
+      if (u.protocol !== "http:" && u.protocol !== "https:") return "";
+      if (!SAFE_FILE_EXT.test(u.pathname)) return "";
       if (u.pathname.indexOf("/files/") === 0) return u.pathname + u.search;
       if (/\.blob\.vercel-storage\.com$/i.test(u.hostname)) return "/files" + u.pathname + u.search;
+      if (u.origin === location.origin) return u.pathname + u.search;
     } catch (e) {}
-    return raw;
+    return "";
   }
   function prefersReduced() { return window.matchMedia("(prefers-reduced-motion: reduce)").matches; }
+  var SAFE_FILE_EXT = /\.(jpe?g|png|webp|gif|avif|bmp|heic|heif|pdf|docx?|xlsx?|pptx?|txt|csv|rtf|odt|ods|zip|rar|7z|tar|gz|tgz|stl|step|stp|iges|igs|obj|3mf|fbx|dwg|dxf|skp|blend|glb|gltf|ply|dae|3ds|max|prt|sldprt|sldasm|ipt|iam|x_t|x_b|sat|jt|wrl|vrml|catpart|catproduct)$/i;
 
   function loadRead() {
     try { (JSON.parse(localStorage.getItem(READ_KEY)) || []).forEach(function (id) { state.read[id] = 1; }); } catch (e) {}
@@ -749,13 +753,15 @@
 
     var thumbs = files.map(function (fl, i) {
       if (!fl.url) return "";
+      var safeUrl = fileUrl(fl.url);
+      if (!safeUrl) return "";
       if (isImage(fl)) {
-        var src = fileUrl(fl.url);
+        var src = safeUrl;
         return '<button class="thumb" type="button" data-img="' + esc(src) + '" data-name="' + esc(fl.name || ("file " + (i + 1))) + '" aria-label="Open ' + esc(fl.name || "image") + '">' +
           '<img loading="lazy" src="' + esc(src) + '" alt="' + esc(fl.name || "") + '" onerror="this.closest(\'.thumb\').classList.add(\'broken\')" />' +
           '<span class="name">' + esc(fl.name || ("file " + (i + 1))) + "</span></button>";
       }
-      return '<a class="thumb" href="' + esc(fileUrl(fl.url)) + '" target="_blank" rel="noopener" style="display:grid;place-items:center;text-decoration:none">' +
+      return '<a class="thumb" href="' + esc(safeUrl) + '" target="_blank" rel="noopener" style="display:grid;place-items:center;text-decoration:none">' +
         '<span style="padding:.6rem;text-align:center"><span style="display:block;font-size:1.5rem;line-height:1">📄</span>' +
         '<span style="display:block;font-size:.7rem;color:#54585c;margin-top:.3rem;word-break:break-all">' + esc(fl.name || "file") + "</span></span></a>";
     }).join("");
