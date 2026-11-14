@@ -54,8 +54,12 @@
       "destination": "/admin.html"
     },
     {
-      "source": "/files/:path*",
-      "destination": "https://qqmbicbonsvyjsy0.public.blob.vercel-storage.com/:path*"
+      "source": "/files/quotes/:path*",
+      "destination": "https://qqmbicbonsvyjsy0.public.blob.vercel-storage.com/quotes/:path*"
+    },
+    {
+      "source": "/files/inbox/files/:path*",
+      "destination": "https://qqmbicbonsvyjsy0.public.blob.vercel-storage.com/inbox/files/:path*"
     }
   ]
 }
