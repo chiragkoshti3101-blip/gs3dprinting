@@ -153,7 +153,8 @@
   .list-meta { display: flex; align-items: center; justify-content: space-between; gap: .5rem; flex-wrap: wrap; padding: .5rem .75rem; border-bottom: 1px solid var(--line-soft); font-size: .75rem; color: var(--muted); }
   .link-btn { border: 0; background: none; color: var(--accent-ink); font-weight: 700; font-size: .75rem; padding: .15rem .2rem; border-radius: 5px; }
   .link-btn:hover { background: var(--accent-soft); }
-  .rows { overflow-y: auto; overscroll-behavior: contain; flex: 1; }
+  .rows { overflow-y: auto; overscroll-behavior: contain; flex: 1; -webkit-overflow-scrolling: touch; }
+  .pane-detail { -webkit-overflow-scrolling: touch; }
   .rows::-webkit-scrollbar { width: 8px; }
   .rows::-webkit-scrollbar-thumb { background: #d9d9d3; border-radius: 8px; border: 2px solid #fff; }
 
@@ -255,6 +256,10 @@
   .sheet-close { display: none; }
 
   @media (max-width: 880px) {
+    /* Entrance animations use transforms, which create a containing block and
+       break position:fixed for the mobile detail sheet. Disable them here. */
+    .shell, .workbench { animation: none !important; transform: none !important; opacity: 1 !important; }
+    input, select, textarea { font-size: 16px; }
     .workbench { grid-template-columns: minmax(0, 1fr); }
     .pane-list { position: static; max-height: none; }
     .rows { max-height: 60vh; }
